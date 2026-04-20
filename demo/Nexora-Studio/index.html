@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nexora Studio</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<style>
+body{font-family:Segoe UI,sans-serif;margin:0;padding:20px;background:#f8fafc;}
+#nsHeader{background:#1e293b;color:white;padding:20px;border-radius:10px;margin-bottom:15px;}
+.nsContainer{display:flex;gap:15px;height:650px;}
+.nsSidebar{width:180px;background:#f1f5f9;padding:15px;border-radius:10px;}
+.nsSidebar button{width:100%;margin-bottom:8px;padding:8px;border:none;border-radius:6px;background:#1e293b;color:white;cursor:pointer;}
+.nsStructure{flex:1;background:#fff;border:1px solid #e2e8f0;padding:15px;border-radius:10px;overflow:auto;}
+.nsEditor{width:420px;background:#0f172a;padding:15px;border-radius:10px;display:flex;flex-direction:column;}
+#tabs{display:flex;gap:5px;margin-bottom:8px;flex-wrap:wrap;}
+.tab{background:#1e293b;color:white;padding:5px 10px;border-radius:6px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:5px;}
+.tab.active{background:#2563eb;}
+.tab span{cursor:pointer;color:#f87171;}
+#pfCodeEditor{flex:1;background:#1e293b;color:#f8fafc;border:none;border-radius:8px;padding:10px;font-family:monospace;resize:none;}
+ul{list-style:none;padding-left:20px;}
+li{cursor:pointer;margin:3px 0;}
+li:hover{background:#e2e8f0;}
+#libraryPanel{width:250px;background:#eef2f7;padding:15px;border-radius:10px;overflow:auto;}
+.library-item{padding:6px;background:#1e293b;color:white;border-radius:6px;margin-bottom:6px;cursor:grab;font-size:13px;}
+#librarySearch{width:100%;padding:6px;margin-bottom:10px;border-radius:6px;border:1px solid #cbd5e1;}
+</style>
+</head>
+
+<body>
+
+<div id="nsHeader">
+<h1>Nexora Studio</h1>
+</div>
+
+<div class="nsContainer">
+
+<div class="nsSidebar">
+<h3>Plantillas</h3>
+<button onclick="pfLoadTemplate('web')">🌐 Web</button>
+<button onclick="pfLoadTemplate('apk')">📱 APK</button>
+<button onclick="pfLoadTemplate('exe')">💻 EXE</button>
+<button onclick="pfLoadTemplate('portable')">📦 Portable</button>
+<button onclick="pfLoadTemplate('app')">📲 APP</button>
+</div>
+
+<div class="nsStructure">
+<h3>Estructura</h3>
+<input type="text" id="treeSearch" placeholder="Buscar en estructura..." style="width:100%;padding:6px;margin-bottom:8px;border-radius:6px;border:1px solid #cbd5e1;">
+<div id="pfTree"></div>
+<button onclick="pfDownloadZip()">⬇ Descargar ZIP</button>
+</div>
+
+<div id="libraryPanel">
+<h3>Biblioteca</h3>
+<input type="text" id="librarySearch" placeholder="Buscar archivo...">
+<div id="libraryItems"></div>
+</div>
+
+<div class="nsEditor">
+<h3>Editor</h3>
+<div id="tabs"></div>
+<textarea id="pfCodeEditor"></textarea>
+</div>
+
+</div>
+
+<script>
+
+/* =================== VARIABLES =================== */
+let pfStructure = {};
+let pfCurrentFile = null;
+let pfTabs = [];
+let pfActiveTab = null;
+let pfSelectedPath = null;
+
+/* =================== BIBLIOTECA COMPLETA =================== */
+const pfLibraryData = {
+"Componentes Web":{
+"header.html":"<header><h1>{{PROJECT_NAME}}</h1></header>",
+"footer.html":"<footer>© 2026</footer>",
+"navbar.html":"<nav>Menu</nav>"
+},
+"Archivos Base":{
+"index.html":"<!DOCTYPE html>\n<html>\n<head><title>{{PROJECT_NAME}}</title></head>\n<body></body>\n</html>",
+"styles.css":"body{margin:0;font-family:Arial;}",
+"main.js":"console.log('Proyecto iniciado');"
+},
+"Configuraciones":{
+".env":"PORT=3000",
+"config.json":"{\n\"name\":\"{{PROJECT_NAME}}\"\n}"
+},
+"Backend API":{
+"server.js":"const express=require('express');",
+"routes.js":"module.exports={};"
+},
+"Assets Pack":{
+"images":{},
+"icons":{},
+"fonts":{}
+}
+};
+
+/* Render Biblioteca */
+function renderLibrary(){
+const container=document.getElementById("libraryItems");
+container.innerHTML="";
+for(let folder in pfLibraryData){
+const div=document.createElement("div");
+div.className="library-item";
+div.draggable=true;
+div.innerText="📁 "+folder;
+div.dataset.key=folder;
+div.addEventListener("dragstart",e=>{
+e.dataTransfer.setData("library",folder);
+});
+container.appendChild(div);
+}
+}
+renderLibrary();
+
+/* Buscador Biblioteca */
+document.getElementById("librarySearch").addEventListener("input",function(){
+const search=this.value.toLowerCase();
+document.querySelectorAll(".library-item").forEach(item=>{
+item.style.display=item.innerText.toLowerCase().includes(search)?"block":"none";
+});
+});
+
+/* =================== TABS =================== */
+function pfOpenTab(path,key,content){
+if(!pfTabs.find(t=>t.path===path)) pfTabs.push({path,key});
+pfActiveTab=path;
+pfCurrentFile={path,key};
+document.getElementById("pfCodeEditor").value=content;
+renderTabs();
+}
+
+function renderTabs(){
+const container=document.getElementById("tabs");
+container.innerHTML="";
+pfTabs.forEach(tab=>{
+const div=document.createElement("div");
+div.className="tab"+(tab.path===pfActiveTab?" active":"");
+div.innerHTML=tab.key+" <span>×</span>";
+div.onclick=()=>pfSwitchTab(tab.path);
+div.querySelector("span").onclick=(e)=>{
+e.stopPropagation();
+pfTabs=pfTabs.filter(t=>t.path!==tab.path);
+if(pfActiveTab===tab.path){pfActiveTab=null;document.getElementById("pfCodeEditor").value="";}
+renderTabs();
+};
+container.appendChild(div);
+});
+}
+
+function pfSwitchTab(path){
+const keys=path.split("/").filter(k=>k!=="");
+let temp=pfStructure;
+for(let k of keys) temp=temp[k];
+pfActiveTab=path;
+pfCurrentFile={path,key:keys[keys.length-1]};
+document.getElementById("pfCodeEditor").value=temp;
+renderTabs();
+}
+
+/* =================== AUTOGUARDADO =================== */
+let saveTimer;
+function autoSave(){
+clearTimeout(saveTimer);
+saveTimer=setTimeout(()=>{
+localStorage.setItem("nexora_data",JSON.stringify({
+structure:pfStructure,
+tabs:pfTabs,
+active:pfActiveTab
+}));
+},2000);
+}
+
+document.getElementById("pfCodeEditor").addEventListener("input",function(){
+if(!pfCurrentFile)return;
+const keys=pfCurrentFile.path.split("/").filter(k=>k!=="");
+let temp=pfStructure;
+for(let i=0;i<keys.length-1;i++) temp=temp[keys[i]];
+temp[pfCurrentFile.key]=this.value;
+autoSave();
+});
+
+/* =================== TREE =================== */
+function pfRender(){
+const tree=document.getElementById("pfTree");
+tree.innerHTML="";
+tree.appendChild(pfBuildTree(pfStructure));
+}
+
+function pfBuildTree(obj,path=""){
+const ul=document.createElement("ul");
+for(let key in obj){
+const li=document.createElement("li");
+li.dataset.path=path+"/"+key;
+
+li.onclick=(e)=>{
+e.stopPropagation();
+pfSelectedPath=li.dataset.path;
+};
+
+if(typeof obj[key]==="string"){
+li.innerText="📄 "+key;
+li.ondblclick=()=>pfOpenTab(path+"/"+key,key,obj[key]);
+}else{
+li.innerText="📁 "+key;
+li.appendChild(pfBuildTree(obj[key],path+"/"+key));
+}
+
+li.addEventListener("dragover",e=>e.preventDefault());
+li.addEventListener("drop",e=>{
+const lib=e.dataTransfer.getData("library");
+if(lib && typeof obj[key]!=="string"){
+obj[key][lib]=JSON.parse(JSON.stringify(pfLibraryData[lib]));
+pfRender();
+}
+});
+
+ul.appendChild(li);
+}
+return ul;
+}
+
+/* =================== PLANTILLAS =================== */
+function pfLoadTemplate(type){
+if(type==="web"){
+pfStructure={"src":{"index.html":"<h1>{{PROJECT_NAME}}</h1>"}};}
+if(type==="app"){
+pfStructure={"public":{"index.html":"<h1>{{PROJECT_NAME}}</h1>"}};}
+if(type==="backend"){
+pfStructure={"server":{"server.js":"console.log('Servidor');"}};}
+pfRender();
+}
+
+/* =================== ZIP =================== */
+function pfDownloadZip(){
+const zip=new JSZip();
+function add(obj,path=""){
+for(let key in obj){
+if(typeof obj[key]==="string") zip.file(path+key,obj[key]);
+else add(obj[key],path+key+"/");
+}
+}
+add(pfStructure);
+zip.generateAsync({type:"blob"}).then(content=>{
+const a=document.createElement("a");
+a.href=URL.createObjectURL(content);
+a.download="proyecto.zip";
+a.click();
+});
+}
+
+/* =================== NUEVAS FUNCIONES =================== */
+
+/* Buscador en estructura */
+document.getElementById("treeSearch").addEventListener("input",function(){
+const val=this.value.toLowerCase();
+document.querySelectorAll("#pfTree li").forEach(li=>{
+li.style.display=li.innerText.toLowerCase().includes(val)?"block":"none";
+});
+});
+
+/* Renombrar */
+document.addEventListener("keydown",function(e){
+if(e.key==="F2" && pfSelectedPath){
+const nuevo=prompt("Nuevo nombre:");
+if(!nuevo)return;
+const keys=pfSelectedPath.split("/").filter(k=>k!=="");
+let temp=pfStructure;
+for(let i=0;i<keys.length-1;i++) temp=temp[keys[i]];
+temp[nuevo]=temp[keys[keys.length-1]];
+delete temp[keys[keys.length-1]];
+pfRender();
+}
+});
+
+/* Eliminar */
+document.addEventListener("keydown",function(e){
+if(e.key==="Delete" && pfSelectedPath){
+if(!confirm("¿Seguro que deseas eliminar?"))return;
+const keys=pfSelectedPath.split("/").filter(k=>k!=="");
+let temp=pfStructure;
+for(let i=0;i<keys.length-1;i++) temp=temp[keys[i]];
+delete temp[keys[keys.length-1]];
+pfTabs=pfTabs.filter(tab=>!tab.path.startsWith(pfSelectedPath));
+if(pfActiveTab && pfActiveTab.startsWith(pfSelectedPath)){
+pfActiveTab=null;
+document.getElementById("pfCodeEditor").value="";
+}
+pfRender();
+renderTabs();
+}
+});
+
+/* Vista Previa */
+document.addEventListener("keydown",function(e){
+if(e.ctrlKey && e.key==="p"){
+e.preventDefault();
+let html="";
+function findIndex(obj){
+for(let k in obj){
+if(k==="index.html") html=obj[k];
+if(typeof obj[k]==="object") findIndex(obj[k]);
+}
+}
+findIndex(pfStructure);
+const w=window.open();
+w.document.write(html);
+}
+});
+
+</script>
+</body>
+</html>

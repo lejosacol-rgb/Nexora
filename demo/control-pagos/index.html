@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Control de Pagos Pro Completo</title>
+<style>
+:root{
+  --bg1:#1a0026; --bg2:#32004d; --card:#2a003f; --primary:#e6007e; --success:#00ffb3;
+  --warning:#ff0000; --text:#ffffff; --disabled:#555555; --row-pagado:#004d33;
+  --row-pendiente:#660000; --hover:#ffffff11; --header-bg:#3a0055;
+}
+body{margin:0;font-family:'Segoe UI',sans-serif;background:linear-gradient(160deg,var(--bg1),var(--bg2));color:var(--text);overflow-x:hidden;position:relative;}
+header{padding:20px;font-size:22px;font-weight:bold;backdrop-filter:blur(10px);position:sticky;top:0;background:rgba(26,0,38,.7);z-index:1;}
+.mini-dashboard{display:flex;gap:10px;overflow-x:auto;padding-top:10px;align-items:flex-end;}
+.mini-card{background:#3a0055;padding:12px;border-radius:15px;min-width:110px;text-align:center;box-shadow:0 5px 15px rgba(0,0,0,.3);}
+.mini-card span{display:block;font-size:18px;font-weight:bold;}
+.highlight{background:linear-gradient(145deg,#e6007e,#b3005c);}
+.container{padding:20px;}
+input,select{width:100%;padding:14px;margin-bottom:12px;border-radius:15px;border:none;background:#3a0055;color:white;}
+input:disabled{background:var(--disabled);color:#ccc;}
+button{padding:10px 14px;border:none;border-radius:20px;margin-top:8px;font-weight:bold;cursor:pointer;transition:0.2s;}
+button:hover{opacity:0.9;}
+button.full-width{width:100%;}
+.btn-primary{background:var(--primary);color:white;}
+.btn-light{background:#ffffff22;color:white;}
+.btn-danger{background:#ff3b3b;color:white;}
+.btn-success{background:var(--success);color:black;}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);padding:20px;overflow:auto;z-index:1000;opacity:0;transition:opacity .25s ease;}
+.modal.active{display:block;opacity:1;}
+.modal-content{background:linear-gradient(145deg,#2a003f,#3a0055);padding:20px;border-radius:25px;box-shadow:0 20px 40px rgba(0,0,0,.5);}
+#listadoNumeradoWrapper,#listaWrapper{max-height:60vh;overflow-y:auto;border-radius:15px;}
+#listadoNumeradoWrapper table{width:100%;border-collapse:collapse;}
+#listadoNumeradoWrapper th, #listadoNumeradoWrapper td{padding:10px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.1);transition:0.2s;}
+#listadoNumeradoWrapper th{position:sticky;top:0;background:var(--header-bg);font-weight:bold;z-index:2;}
+#listadoNumeradoWrapper tr:hover{background:var(--hover);}
+#listadoNumeradoWrapper tr td:nth-child(7){font-weight:bold;font-size:18px;}
+.cliente-card{background:var(--card);padding:15px;border-radius:20px;margin-bottom:12px;box-shadow:0 5px 15px rgba(0,0,0,.3);display:flex;flex-direction:column;gap:6px;}
+.estado-pagado{color:var(--success);font-weight:bold;}
+.estado-pendiente{color:var(--warning);font-weight:bold;}
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.85);color:white;padding:14px 24px;border-radius:25px;display:none;font-weight:bold;z-index:2000;text-align:center;font-size:16px;}
+.toast-success{background:rgba(0,255,179,.9);color:black;}
+.toast-warning{background:rgba(255,204,0,.9);color:black;}
+#firma-yeimy{position:fixed;bottom:15px;right:20px;font-family:'Brush Script MT','Segoe Script',cursive;font-size:24px;color:#ffb3d9;font-weight:600;pointer-events:none;user-select:none;opacity:0.7;animation: float 2s infinite alternate;}
+@keyframes float{0%{transform:translateY(0);}100%{transform:translateY(-5px);}}
+#tick-animado {position: fixed;top: 50%;left: 50%;transform: translate(-50%, -50%) scale(0);font-size: 120px;opacity: 0;z-index: 3000;pointer-events: none;transition: transform 0.5s ease, opacity 0.5s ease;}
+#tick-animado.show {transform: translate(-50%, -50%) scale(1);opacity: 1;}
+.abono-animado {transform: translateY(-10px); opacity:0; animation: slideFadeIn 0.4s forwards;}
+@keyframes slideFadeIn {to {transform:translateY(0); opacity:1;}}
+</style>
+</head>
+<body>
+
+<header>
+💜 Control de Pagos
+<div class="mini-dashboard">
+<div class="mini-card"><span id="countTotal">0</span><small>Clientes</small></div>
+<div class="mini-card"><span id="countPagados">0</span><small>Pagados</small></div>
+<div class="mini-card"><span id="countPendientes">0</span><small>Pendientes</small></div>
+<div class="mini-card highlight">
+<span id="totalRecogido">$0</span><small>Dinero Recogido</small>
+</div>
+<div class="mini-card highlight">
+<span id="totalPendienteTop">$0</span><small>Dinero Pendiente</small>
+</div>
+</div>
+</header>
+
+<div class="container">
+<input type="text" id="nombre" placeholder="Nombre completo">
+<input type="number" id="talla" placeholder="Talla">
+<input type="number" id="total" placeholder="Valor total">
+<input type="number" id="abono" placeholder="Abono inicial">
+<button class="btn-primary full-width" id="btnGuardar">Guardar Cliente</button>
+<button class="btn-light full-width" id="btnVerClientes">Ver Clientes</button>
+<button class="btn-light full-width" id="btnExportar">📤 Exportar / Enviar</button>
+</div>
+
+<!-- MODAL CLIENTES -->
+<div class="modal" id="modalClientes">
+<div class="modal-content">
+<h2>Clientes</h2>
+<input type="text" id="buscador" placeholder="Buscar cliente...">
+<select id="filtro">
+<option value="todos">Todos</option>
+<option value="pagado">Pagados</option>
+<option value="pendiente">Pendientes</option>
+</select>
+<div id="listaWrapper"><div id="lista"></div></div>
+<button class="btn-primary full-width" id="btnCerrarClientes">Cerrar</button>
+</div>
+</div>
+
+<!-- MODAL EXPORTAR -->
+<div class="modal" id="config">
+<div class="modal-content">
+<h2>Exportar / Listado Pro</h2>
+<button class="btn-light full-width" id="btnListadoNum">Ver Listado Numerado</button>
+<button class="btn-light full-width" id="btnExportExcel">Exportar Excel</button>
+<button class="btn-light full-width" id="btnExportWhatsApp">Enviar por WhatsApp</button>
+<button class="btn-primary full-width" id="btnCerrarConfig">Cerrar</button>
+</div>
+</div>
+
+<!-- MODAL LISTADO NUMERADO PRO -->
+<div class="modal" id="modalListado">
+<div class="modal-content">
+<h2>Listado Numerado Interactivo</h2>
+<div id="listadoNumeradoWrapper"></div>
+<button class="btn-primary full-width" id="btnCerrarListado">Cerrar</button>
+</div>
+</div>
+
+<div id="tick-animado">✅</div>
+<div class="toast" id="toast"></div>
+<div id="firma-yeimy">Yeimy R. Te amo</div>
+
+<script>
+let registros = JSON.parse(localStorage.getItem("registrosNequi")) || [];
+
+// --- UTILS ---
+function mostrarToast(msg, tipo){
+  let t = document.getElementById("toast");
+  t.className = "toast " + (tipo==="success"?"toast-success":"toast-warning");
+  t.innerText = msg;
+  t.style.display="block";
+  setTimeout(()=>t.style.display="none",2500);
+}
+function actualizarDashboard(){
+  let total=registros.length;
+  let pagados=registros.filter(r=>r.total-r.abonado<=0).length;
+  let pendientes=total-pagados;
+  let dineroPendiente=registros.reduce((a,r)=>a+(r.total-r.abonado),0);
+  let dineroRecogido=registros.reduce((a,r)=>a+r.abonado,0);
+  document.getElementById("countTotal").innerText=total;
+  document.getElementById("countPagados").innerText=pagados;
+  document.getElementById("countPendientes").innerText=pendientes;
+  document.getElementById("totalPendienteTop").innerText="$"+dineroPendiente;
+  document.getElementById("totalRecogido").innerText="$"+dineroRecogido;
+}
+
+// --- Guardar cliente ---
+document.getElementById("btnGuardar").addEventListener("click", ()=>{
+  let nombre=document.getElementById("nombre").value.trim();
+  let talla=document.getElementById("talla").value;
+  let total=parseFloat(document.getElementById("total").value);
+  let abono=parseFloat(document.getElementById("abono").value)||0;
+  if(!nombre||!total){mostrarToast("Completa los campos","warning");return;}
+  registros.push({
+    nombre,
+    talla,
+    total,
+    abonado: abono,
+    fecha: new Date().toLocaleDateString(),
+    historialAbonos: abono>0 ? [{valor: abono, fecha: new Date().toLocaleDateString()}] : []
+  });
+  localStorage.setItem("registrosNequi",JSON.stringify(registros));
+  document.getElementById("nombre").value="";
+  document.getElementById("talla").value="";
+  document.getElementById("total").value="";
+  document.getElementById("abono").value="";
+  mostrarToast("Cliente guardado correctamente","success");
+  actualizarDashboard();
+});
+
+// --- Mostrar lista clientes ---
+let modalClientes = document.getElementById("modalClientes");
+document.getElementById("btnVerClientes").addEventListener("click", ()=>{
+  modalClientes.classList.add("active");
+  mostrarListaClientes();
+});
+document.getElementById("btnCerrarClientes").addEventListener("click", ()=>modalClientes.classList.remove("active"));
+document.getElementById("buscador").addEventListener("input", mostrarListaClientes);
+document.getElementById("filtro").addEventListener("change", mostrarListaClientes);
+modalClientes.addEventListener("click", e=>{if(e.target===modalClientes) modalClientes.classList.remove("active");});
+
+function mostrarListaClientes(){
+  let lista = document.getElementById("lista");
+  lista.innerHTML="";
+  let buscador = document.getElementById("buscador").value.toLowerCase();
+  let filtro = document.getElementById("filtro").value;
+  registros.forEach((r,i)=>{
+    let saldo=r.total-r.abonado;
+    let estado=saldo<=0?"pagado":"pendiente";
+
+    if((filtro==="todos"||filtro===estado) && r.nombre.toLowerCase().includes(buscador)){
+      let historialHTML = '';
+      if(r.historialAbonos && r.historialAbonos.length){
+        historialHTML = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">';
+        r.historialAbonos.forEach((h,index)=>{
+          let abonoTotalPrevio = r.historialAbonos.slice(0,index).reduce((a,b)=>a+b.valor,0);
+          let saldoAntes = r.total - abonoTotalPrevio;
+          let saldoDespues = saldoAntes - h.valor;
+          let porcentaje = Math.min(h.valor/saldoAntes,1);
+          let icono = porcentaje>=1?'✅':'⚠️';
+          let colorFondo = porcentaje>=1?'linear-gradient(135deg,#00ffb3,#00cc99)':porcentaje>=0.5?'linear-gradient(135deg,#ffcc00,#ff9900)':'linear-gradient(135deg,#e6007e,#b3005c)';
+          let barraProgreso = `<div style="width:100%; height:5px; background:rgba(255,255,255,0.3); border-radius:3px; margin-top:4px;">
+            <div style="width:${porcentaje*100}%; height:100%; background:rgba(255,255,255,0.9); border-radius:3px; transition: width 0.3s;"></div></div>`;
+          historialHTML += `<div class="abono-animado" style="background:${colorFondo};padding:8px 12px;border-radius:15px;box-shadow:0 4px 12px rgba(0,0,0,0.3);font-size:14px;font-weight:bold;color:white;text-align:center;transition: transform 0.3s, box-shadow 0.3s, filter 0.3s;cursor:pointer;position:relative;"
+            title="Saldo antes: $${saldoAntes} | Saldo después: $${Math.max(0,saldoDespues)}"
+            onclick="editarAbono(${i},${index})"
+            onmouseover="this.style.transform='scale(1.08)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.5)'; this.style.filter='brightness(1.1)';"
+            onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.3)'; this.style.filter='brightness(1)';">
+            ${icono} $${h.valor}<br><small>${h.fecha}</small>${barraProgreso}</div>`;
+        });
+        historialHTML += '</div>';
+      }
+
+      lista.innerHTML += `<div class="cliente-card">
+        📅 ${r.fecha}<br><b>${r.nombre}</b><br>Talla: ${r.talla}<br>Total: $${r.total}<br>Abonado: $${r.abonado}<br>Saldo: $${saldo}<br>Estado: <span class="estado-${estado}">${estado.toUpperCase()}</span>
+        ${historialHTML}
+        <br><div style="display:flex;gap:8px;align-items:center;">
+        <input type="number" placeholder="Agregar abono" style="flex:1" ${saldo<=0?'disabled':''} id="abono-${i}">
+        <button class="btn-primary" style="height:46px;" ${saldo<=0?'disabled':''} onclick="agregarAbono(${i})">Abonar</button>
+        </div>
+        <button class="btn-danger full-width" onclick="eliminarCliente(${i})">Eliminar</button>
+      </div>`;
+    }
+  });
+}
+
+function agregarAbono(i){
+  let input = document.getElementById(`abono-${i}`);
+  let valor = parseFloat(input.value);
+  let saldo = registros[i].total - registros[i].abonado;
+  if(saldo <= 0){ mostrarToast("Cliente ya pagado","warning"); return; }
+  if(!valor || valor <= 0) return;
+  if(valor > saldo) valor = saldo;
+  registros[i].abonado += valor;
+  if(!registros[i].historialAbonos) registros[i].historialAbonos=[];
+  registros[i].historialAbonos.push({valor, fecha: new Date().toLocaleDateString()});
+  localStorage.setItem("registrosNequi",JSON.stringify(registros));
+  input.value="";
+  mostrarListaClientes();
+  actualizarDashboard();
+  mostrarToast("Abono registrado ✅","success");
+
+  let tick = document.getElementById("tick-animado");
+  tick.classList.add("show");
+  setTimeout(()=>tick.classList.remove("show"),1500);
+}
+
+function eliminarCliente(i){
+  registros.splice(i,1);
+  localStorage.setItem("registrosNequi",JSON.stringify(registros));
+  mostrarListaClientes();
+  actualizarDashboard();
+  mostrarToast("Cliente eliminado","success");
+}
+
+// --- Inicializar ---
+actualizarDashboard();
+</script>
+</body>
+</html>
