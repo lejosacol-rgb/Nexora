@@ -3,10 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nexora | Portafolio Premium Asistente</title>
+    <title>Nexora | Tecnología que transforma ideas</title>
 
-    <link rel="icon" type="image/png" href="icon.png">
-    <link rel="apple-touch-icon" href="icon-512.png">
+    <link rel="icon" type="image/x-icon" href="icons/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16x16.png">
+    <link rel="apple-touch-icon" href="icons/favicon-512.512.png">
+    <link rel="manifest" href="manifest.json">
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 
@@ -38,7 +41,7 @@
         nav .menu a { margin-left: 25px; color: var(--text); text-decoration: none; font-weight: 500; transition: 0.3s; }
         nav .menu a:hover { color: var(--accent1); }
 
-        /* Hero */
+        /* Hero Section */
         header { 
             height: 100vh; display: flex; flex-direction: column; 
             justify-content: center; align-items: center; text-align: center; 
@@ -62,11 +65,14 @@
         }
         header .btn:hover { transform: translateY(-3px); box-shadow: 0 10px 25px rgba(0,0,0,0.4); }
 
-        /* Sections */
+        /* Particle Background */
+        #particles-js { position: absolute; width: 100%; height: 100%; top: 0; left: 0; z-index: 0; }
+        header > * { position: relative; z-index: 1; }
+
+        /* Projects Section */
         section { padding: 80px 20px; max-width: 1200px; margin: auto; }
         .section-title { text-align: center; margin-bottom: 50px; font-size: 2rem; font-weight: 600; }
 
-        /* Projects */
         .projects { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 30px; }
         .card { 
             background: var(--card); padding: 30px; border-radius: 20px; 
@@ -76,42 +82,9 @@
         .card:hover { transform: translateY(-8px); border: 1px solid rgba(106, 92, 255, 0.5); }
         .card h3 { margin-bottom: 15px; }
         .card p { color: var(--sub); font-size: 0.95rem; margin-bottom: 20px; }
-        .card button { 
-            padding: 8px 18px; border-radius: 20px; border: none; 
-            background: var(--accent1); color: white; cursor: pointer; transition: 0.3s; 
-        }
-        .card button:hover { background: var(--accent2); }
-
-        /* Filter Buttons */
-        .filter-btn { 
-            background: var(--card); color: var(--text); border: none; 
-            padding: 10px 18px; margin: 5px; border-radius: 20px; 
-            cursor: pointer; transition: 0.3s; 
-        }
-        .filter-btn:hover, .filter-btn.active { background: var(--accent1); color: white; }
 
         /* Footer */
         footer { text-align: center; padding: 40px 20px; background: #0c0c15; color: var(--sub); font-size: 0.9rem; }
-
-        /* Particle Background */
-        #particles-js { position: absolute; width: 100%; height: 100%; top: 0; left: 0; z-index: 0; }
-        header > * { position: relative; z-index: 1; }
-
-        /* Assistant Styles */
-        #assistant-btn { 
-            position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; 
-            border-radius: 50%; background: var(--accent1); display: flex; 
-            justify-content: center; align-items: center; cursor: pointer; z-index: 3000; font-size: 28px; 
-        }
-        #assistant-modal { 
-            display: none; position: fixed; bottom: 100px; right: 30px; 
-            width: 300px; height: 400px; background: var(--card); border-radius: 16px; 
-            box-shadow: 0 10px 25px rgba(0,0,0,0.4); z-index: 3001; flex-direction: column; overflow: hidden; 
-        }
-        #assistant-modal .header { background: var(--accent1); padding: 10px; color: white; font-weight: 600; }
-        #assistant-messages { flex: 1; padding: 10px; overflow-y: auto; color: var(--sub); font-size: 0.9rem; }
-        #assistant-input { padding: 10px; border: none; border-top: 1px solid rgba(255,255,255,0.1); background: #111123; color: white; width: 80%; }
-        #assistant-send { width: 20%; background: var(--accent2); border: none; color: white; cursor: pointer; }
     </style>
 </head>
 
@@ -135,67 +108,47 @@
 
 <section id="proyectos">
     <h2 class="section-title">Proyectos Destacados</h2>
-    <div style="text-align:center;margin-bottom:30px;">
-        <button class="filter-btn active" data-filter="all">Todos</button>
-        <button class="filter-btn" data-filter="finanzas">Finanzas</button>
-        <button class="filter-btn" data-filter="Studio">Studio</button>
-        <button class="filter-btn" data-filter="Conversor">Herramientas</button>
-    </div>
-
     <div class="projects">
-        <div class="card" data-category="finanzas">
+        <div class="card">
             <h3>Control de Pagos</h3>
-            <p>Sistema avanzado para gestión de clientes y abonos con interfaz moderna.</p>
-            <button onclick="alert('Cargando Demo...')">Ver Demo</button>
+            <p>Gestión avanzada de finanzas con interfaz optimizada.</p>
         </div>
-
-        <div class="card" data-category="Studio">
+        <div class="card">
             <h3>Nexora Studio</h3>
-            <p>Editor visual para crear proyectos web y exportarlos fácilmente.</p>
-            <button onclick="alert('Cargando Demo...')">Ver Demo</button>
+            <p>Entorno de desarrollo visual para prototipado rápido.</p>
         </div>
-        
-        <div class="card" data-category="Conversor">
+        <div class="card">
             <h3>Conversor Ultra PRO+</h3>
-            <p>Consulta en tiempo real el precio del dólar y tasas de mercado.</p>
-            <button onclick="alert('Cargando Demo...')">Ver Demo</button>
+            <p>Herramienta de conversión de divisas con datos en tiempo real.</p>
         </div>
     </div>
 </section>
 
 <footer>
-    © 2026 Nexora. Fundado por Lejosaco.
+    © 2026 Nexora. Todos los derechos reservados.
 </footer>
-
-<div id="assistant-btn">💡</div>
-<div id="assistant-modal">
-    <div class="header">Asistente Nexora</div>
-    <div id="assistant-messages"></div>
-    <div style="display:flex;">
-        <input id="assistant-input" type="text" placeholder="Pregunta algo...">
-        <button id="assistant-send">></button>
-    </div>
-</div>
 
 <script src="https://cdn.jsdelivr.net/npm/particles.js"></script>
 <script>
-    function scrollToProjects() { document.getElementById("proyectos").scrollIntoView({ behavior: "smooth" }); }
+    function scrollToProjects() { 
+        document.getElementById("proyectos").scrollIntoView({ behavior: "smooth" }); 
+    }
 
-    // Particles.js
+    // Partículas
     particlesJS('particles-js', {
         "particles": {
-            "number": { "value": 50 },
+            "number": { "value": 60 },
             "color": { "value": "#6a5cff" },
             "shape": { "type": "circle" },
-            "opacity": { "value": 0.3 },
+            "opacity": { "value": 0.4 },
             "size": { "value": 3 },
             "line_linked": { "enable": true, "distance": 120, "color": "#6a5cff", "opacity": 0.2, "width": 1 },
-            "move": { "enable": true, "speed": 1 }
+            "move": { "enable": true, "speed": 1.5 }
         },
         "interactivity": { "detect_on": "canvas", "events": { "onhover": { "enable": true, "mode": "repulse" } } }
     });
 
-    // Animations al cargar
+    // Animaciones de entrada
     window.addEventListener('load', () => {
         const elements = document.querySelectorAll('header h1, header p, header .btn, .card');
         elements.forEach((el, i) => {
@@ -204,27 +157,6 @@
                 el.style.transform = 'translateY(0)';
             }, i * 200);
         });
-    });
-
-    // Filtros
-    const filterBtns = document.querySelectorAll('.filter-btn');
-    const cards = document.querySelectorAll('.card');
-    filterBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            filterBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            const filter = btn.getAttribute('data-filter');
-            cards.forEach(card => {
-                card.style.display = (filter === 'all' || card.getAttribute('data-category') === filter) ? 'block' : 'none';
-            });
-        });
-    });
-
-    // Asistente
-    const assistantBtn = document.getElementById('assistant-btn');
-    const assistantModal = document.getElementById('assistant-modal');
-    assistantBtn.addEventListener('click', () => {
-        assistantModal.style.display = assistantModal.style.display === 'flex' ? 'none' : 'flex';
     });
 </script>
 
