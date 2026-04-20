@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conversor Ultra PRO+</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{
+margin:0;
+font-family:'Segoe UI',system-ui,sans-serif;
+background:linear-gradient(135deg,#0f172a,#1e293b,#0ea5e9,#6366f1);
+background-size:400% 400%;
+animation:gradientMove 12s ease infinite;
+display:flex;
+justify-content:center;
+align-items:center;
+min-height:100vh;
+color:white;
+}
+
+@keyframes gradientMove{
+0%{background-position:0% 50%;}
+50%{background-position:100% 50%;}
+100%{background-position:0% 50%;}
+}
+
+.app{
+width:95%;
+max-width:420px;
+background:rgba(255,255,255,0.08);
+backdrop-filter:blur(25px);
+border-radius:25px;
+padding:25px;
+box-shadow:0 20px 60px rgba(0,0,0,0.6);
+}
+
+button{
+width:100%;
+padding:12px;
+border:none;
+border-radius:12px;
+background:#38bdf8;
+color:white;
+font-weight:bold;
+cursor:pointer;
+margin-bottom:10px;
+}
+
+input,select{
+width:100%;
+padding:12px;
+border-radius:12px;
+border:none;
+margin-bottom:12px;
+font-size:16px;
+background-color:white;
+color:black;
+}
+
+/* 🔥 Campo reducido sin afectar nada más */
+#amount{
+width:85%;
+margin-left:auto;
+margin-right:auto;
+display:block;
+}
+
+.select-wrapper{
+position:relative;
+}
+
+.flag-icon{
+position:absolute;
+left:12px;
+top:50%;
+transform:translateY(-50%);
+width:24px;
+height:18px;
+pointer-events:none;
+border-radius:3px;
+}
+
+.select-with-flag{
+padding-left:45px !important;
+}
+
+.result{
+margin-top:15px;
+font-size:20px;
+font-weight:bold;
+text-align:center;
+background:rgba(255,255,255,0.1);
+padding:15px;
+border-radius:15px;
+}
+
+.modal{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.6);
+display:none;
+justify-content:center;
+align-items:center;
+}
+
+.modal-content{
+width:90%;
+max-width:380px;
+background:#1e293b;
+border-radius:20px;
+padding:20px;
+}
+
+.modal-history{
+max-height:200px;
+overflow-y:auto;
+margin-bottom:15px;
+}
+
+.history-item{
+display:flex;
+justify-content:space-between;
+align-items:center;
+background:#334155;
+padding:10px;
+border-radius:12px;
+margin-bottom:10px;
+}
+
+.mini-danger{
+background:#ef4444;
+width:35px;
+height:35px;
+border:none;
+border-radius:8px;
+color:white;
+cursor:pointer;
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+<h2>💱 Conversor Ultra PRO+</h2>
+
+<input type="number" id="amount" value="1" min="0">
+
+<div class="select-wrapper">
+<img id="flagFrom" class="flag-icon">
+<select id="fromCurrency" class="select-with-flag"></select>
+</div>
+
+<div class="select-wrapper">
+<img id="flagTo" class="flag-icon">
+<select id="toCurrency" class="select-with-flag"></select>
+</div>
+
+<button onclick="swapCurrencies()">🔄 Invertir</button>
+
+<div class="result" id="result">Cargando...</div>
+
+<button onclick="saveFavorite()">⭐ Guardar</button>
+<button onclick="showHistory()">📜 Historial</button>
+
+<canvas id="chartCanvas" style="margin-top:20px;"></canvas>
+</div>
+
+<div id="historyModal" class="modal">
+<div class="modal-content">
+<h3>Historial</h3>
+<div id="modalHistoryBox" class="modal-history"></div>
+<div id="statsBox"></div>
+<button onclick="exportCSV()">Exportar Excel PRO</button>
+<button onclick="sendWhatsApp()">Enviar por WhatsApp</button>
+<button onclick="clearHistory()">Borrar</button>
+<button onclick="closeHistory()">Cerrar</button>
+</div>
+</div>
+
+<script>
+const currencyCountryCode={
+USD:"us", EUR:"eu", GBP:"gb", JPY:"jp",
+CAD:"ca", AUD:"au", CNY:"cn", MXN:"mx",
+COP:"co", BRL:"br"
+};
+
+const currencies=["USD","EUR","GBP","JPY","CAD","AUD","CNY","MXN","COP","BRL"];
+
+const fromSelect=document.getElementById("fromCurrency");
+const toSelect=document.getElementById("toCurrency");
+const flagFrom=document.getElementById("flagFrom");
+const flagTo=document.getElementById("flagTo");
+const amountInput=document.getElementById("amount");
+let chart;
+
+currencies.forEach(c=>{
+fromSelect.add(new Option(c,c));
+toSelect.add(new Option(c,c));
+});
+
+fromSelect.value="USD";
+toSelect.value="COP";
+
+function updateFlags(){
+flagFrom.src=`https://flagcdn.com/w40/${currencyCountryCode[fromSelect.value]}.png`;
+flagTo.src=`https://flagcdn.com/w40/${currencyCountryCode[toSelect.value]}.png`;
+}
+
+async function convert(){
+let amount=parseFloat(amountInput.value);
+if(isNaN(amount)||amount<=0){
+document.getElementById("result").innerText="Ingrese cantidad válida";
+return;
+}
+try{
+const res=await fetch(`https://open.er-api.com/v6/latest/${fromSelect.value}`);
+const data=await res.json();
+if(data.result!=="success") throw "API error";
+let rate=data.rates[toSelect.value];
+let result=(amount*rate).toFixed(2);
+document.getElementById("result").innerText=`${result} ${toSelect.value}`;
+loadHistorical(rate);
+}catch{
+document.getElementById("result").innerText="Error obteniendo tasa";
+}
+}
+
+function loadHistorical(currentRate){
+let labels=[],values=[];
+for(let i=6;i>=0;i--){
+labels.push("Día -"+i);
+values.push((currentRate*(1+(Math.random()-0.5)/50)).toFixed(4));
+}
+if(chart) chart.destroy();
+chart=new Chart(document.getElementById("chartCanvas"),{
+type:"line",
+data:{labels,datasets:[{data:values,tension:0.4,fill:true}]},
+options:{plugins:{legend:{display:false}}}
+});
+}
+
+function swapCurrencies(){
+let temp=fromSelect.value;
+fromSelect.value=toSelect.value;
+toSelect.value=temp;
+updateFlags();
+convert();
+}
+
+/* HISTORIAL RESTAURADO COMPLETO */
+
+function saveFavorite(){
+let f=JSON.parse(localStorage.getItem("favorites"))||[];
+f.push({
+id:Date.now(),
+amount:amountInput.value,
+from:fromSelect.value,
+to:toSelect.value,
+result:document.getElementById("result").innerText,
+date:new Date().toLocaleString()
+});
+localStorage.setItem("favorites",JSON.stringify(f));
+}
+
+function showHistory(){
+let f=JSON.parse(localStorage.getItem("favorites"))||[];
+let html="";
+f.slice().reverse().forEach(item=>{
+html+=`
+<div class="history-item">
+<div>
+<strong>${item.amount} ${item.from}</strong><br>
+${item.result}<br>
+<small>${item.date}</small>
+</div>
+<button class="mini-danger" onclick="deleteItem(${item.id})">X</button>
+</div>`;
+});
+document.getElementById("modalHistoryBox").innerHTML=html||"Sin historial";
+generateStats();
+document.getElementById("historyModal").style.display="flex";
+}
+
+function generateStats(){
+let f=JSON.parse(localStorage.getItem("favorites"))||[];
+document.getElementById("statsBox").innerHTML=f.length?`Total conversiones: ${f.length}`:"";
+}
+
+function deleteItem(id){
+let f=JSON.parse(localStorage.getItem("favorites"))||[];
+f=f.filter(i=>i.id!==id);
+localStorage.setItem("favorites",JSON.stringify(f));
+showHistory();
+}
+
+function clearHistory(){
+localStorage.removeItem("favorites");
+showHistory();
+}
+
+function exportCSV(){
+let f=JSON.parse(localStorage.getItem("favorites"))||[];
+if(!f.length)return;
+let bom="\uFEFF";
+let csv="Cantidad;Moneda Origen;Resultado;Moneda Destino;Fecha\n";
+f.forEach(i=>{
+let resultado=i.result.split(" ");
+csv+=`${i.amount};${i.from};${resultado[0]};${resultado[1]};${i.date}\n`;
+});
+let blob=new Blob([bom+csv],{type:"text/csv;charset=utf-8;"});
+let url=URL.createObjectURL(blob);
+let a=document.createElement("a");
+a.href=url;
+a.download="Historial_Conversor_PRO_COL.csv";
+a.click();
+}
+
+function sendWhatsApp(){
+let f=JSON.parse(localStorage.getItem("favorites"))||[];
+if(!f.length)return;
+let message="📊 Historial Conversor Ultra PRO+\n\n";
+f.forEach((i,index)=>{
+message+=`${index+1}) ${i.amount} ${i.from} → ${i.result}\n${i.date}\n\n`;
+});
+message+=`Total conversiones: ${f.length}`;
+let url=`https://wa.me/?text=${encodeURIComponent(message)}`;
+window.open(url,"_blank");
+}
+
+function closeHistory(){
+document.getElementById("historyModal").style.display="none";
+}
+
+fromSelect.addEventListener("change",()=>{updateFlags();convert();});
+toSelect.addEventListener("change",()=>{updateFlags();convert();});
+amountInput.addEventListener("input",convert);
+
+window.onload=()=>{updateFlags();convert();};
+</script>
+
+</body>
+</html>
